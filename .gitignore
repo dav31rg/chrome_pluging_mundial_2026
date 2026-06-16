@@ -1,0 +1,26 @@
+# Local AI tooling config (machine-specific permissions, not project config)
+.claude/
+
+# Design-tool docs and sidecar metadata (not needed for the extension to run)
+.impeccable/
+DESIGN.md
+PRODUCT.md
+
+# OS cruft
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Dependencies (if any tooling gets added later)
+node_modules/
+
+# Packaged extension artifacts
+*.zip
+*.crx
+*.pem
+
+# Logs
+*.log

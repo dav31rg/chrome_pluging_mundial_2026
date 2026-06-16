@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dark Mode + Fútbol</title>
+  <title>Dark Mode + Mundial 2026</title>
   <link rel="stylesheet" href="popup.css" />
 </head>
 <body>
@@ -15,7 +15,7 @@
         <span id="header-icon">☀️</span> Tema
       </button>
       <button class="tab-btn" data-tab="futbol">
-        ⚽ Fútbol
+        🏆 Mundial 2026
       </button>
     </nav>
 
@@ -52,42 +52,35 @@
     </div>
 
     <!-- ══════════════════════════════════════════════ -->
-    <!-- Tab: Fútbol                                    -->
+    <!-- Tab: Mundial 2026                              -->
     <!-- ══════════════════════════════════════════════ -->
     <div id="tab-futbol" class="tab-content hidden">
 
-      <!-- Search bar -->
+      <!-- Favorite team -->
       <div class="search-box">
         <input
           type="text"
           id="team-search"
-          placeholder="Buscar equipo (ej. Barcelona)…"
+          placeholder="Tu selección favorita (ej. Argentina)…"
           autocomplete="off"
         />
-        <button id="search-btn" aria-label="Buscar">🔍</button>
+        <button id="search-btn" aria-label="Guardar selección favorita">⭐</button>
+      </div>
+      <div id="favorite-badge" class="favorite-badge hidden">
+        Siguiendo a <strong id="favorite-name"></strong>
+        <button id="favorite-clear" aria-label="Quitar favorito">✕</button>
       </div>
 
-      <!-- Team header (shown after a successful search) -->
-      <div id="team-header" class="team-header hidden">
-        <img id="team-badge-img" src="" alt="" class="team-badge-img" />
-        <div class="team-header-info">
-          <span id="team-display-name" class="team-display-name"></span>
-          <span id="team-display-league" class="team-display-league"></span>
-        </div>
+      <!-- Sub-tabs: Hoy / Próximos / Grupos -->
+      <div id="match-sub-tabs" class="sub-tabs">
+        <button class="sub-tab active" data-type="today">Hoy</button>
+        <button class="sub-tab" data-type="next">Próximos</button>
+        <button class="sub-tab" data-type="groups">Grupos</button>
       </div>
 
-      <!-- Sub-tabs: Últimos / Próximos -->
-      <div id="match-sub-tabs" class="sub-tabs hidden">
-        <button class="sub-tab active" data-type="last">Últimos resultados</button>
-        <button class="sub-tab" data-type="next">Próximos partidos</button>
-      </div>
-
-      <!-- Matches list (scrollable) -->
+      <!-- Matches / groups container (scrollable) -->
       <div id="matches-container">
-        <div class="empty-state">
-          <span>🔎</span>
-          <p>Busca un equipo para ver<br/>sus partidos y resultados</p>
-        </div>
+        <div class="loading-state"><div class="spinner"></div><span>Cargando…</span></div>
       </div>
 
     </div><!-- /tab-futbol -->

@@ -1,18 +1,20 @@
 /* =====================================================
-   Dark Mode + Fútbol Extension — popup.js
+   Dark Mode + Mundial 2026 Extension — popup.js
    ===================================================== */
 
 'use strict';
 
-const API_BASE = 'https://www.thesportsdb.com/api/v1/json/3';
+const API_BASE       = 'https://www.thesportsdb.com/api/v1/json/3';
+const WORLD_CUP_ID    = '4429';
+const WORLD_CUP_SEASON = '2026';
+const FAVORITE_KEY    = 'mundial_favoriteTeam';
 
 /* ── State ──────────────────────────────────────────── */
 const state = {
-  currentTeamId:    null,
-  currentTeamName:  null,
-  currentMatchType: 'last',
+  currentMatchType: 'today',
   currentChromeTab: null,
   storageKey:       null,
+  favoriteTeam:     null,
 };
 
 /* ── Boot ───────────────────────────────────────────── */
@@ -33,14 +35,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   const toggleCardEl    = document.getElementById('toggle-card');
   const unsupportedEl   = document.getElementById('unsupported');
 
-  // Football tab
+  // Mundial 2026 tab
   const teamSearchInput   = document.getElementById('team-search');
   const searchBtn         = document.getElementById('search-btn');
-  const teamHeaderEl      = document.getElementById('team-header');
-  const teamBadgeImg      = document.getElementById('team-badge-img');
-  const teamDisplayName   = document.getElementById('team-display-name');
-  const teamDisplayLeague = document.getElementById('team-display-league');
-  const matchSubTabsEl    = document.getElementById('match-sub-tabs');
+  const favoriteBadgeEl   = document.getElementById('favorite-badge');
+  const favoriteNameEl    = document.getElementById('favorite-name');
+  const favoriteClearBtn  = document.getElementById('favorite-clear');
   const matchesContainer  = document.getElementById('matches-container');
   const subTabBtns        = document.querySelectorAll('.sub-tab');
 
@@ -97,94 +97,159 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderThemeUI(newValue);
   });
 
-  /* ── Football logic ──────────────────────────────── */
-  searchBtn.addEventListener('click', handleSearch);
+  /* ── Mundial 2026 logic ───────────────────────────── */
+  const storedFavorite = await chrome.storage.local.get(FAVORITE_KEY);
+  state.favoriteTeam = storedFavorite[FAVORITE_KEY] ?? null;
+  renderFavoriteUI();
+
+  searchBtn.addEventListener('click', saveFavoriteTeam);
   teamSearchInput.addEventListener('keydown', e => {
-    if (e.key === 'Enter') handleSearch();
+    if (e.key === 'Enter') saveFavoriteTeam();
+  });
+  favoriteClearBtn.addEventListener('click', async () => {
+    state.favoriteTeam = null;
+    await chrome.storage.local.remove(FAVORITE_KEY);
+    renderFavoriteUI();
+    await loadActiveSubTab();
   });
 
   subTabBtns.forEach(btn => {
     btn.addEventListener('click', async () => {
-      if (!state.currentTeamId) return;
       subTabBtns.forEach(b => b.classList.toggle('active', b === btn));
       state.currentMatchType = btn.dataset.type;
-      await loadMatches(state.currentTeamId, state.currentMatchType);
+      await loadActiveSubTab();
     });
   });
 
+  await loadActiveSubTab();
+
   /* ─────────────────────────────────────────────────
-     Football helpers
+     Mundial 2026 helpers
      ───────────────────────────────────────────────── */
 
-  async function handleSearch() {
-    const query = teamSearchInput.value.trim();
-    if (!query) return;
+  async function saveFavoriteTeam() {
+    const name = teamSearchInput.value.trim();
+    if (!name) return;
+    state.favoriteTeam = name;
+    await chrome.storage.local.set({ [FAVORITE_KEY]: name });
+    teamSearchInput.value = '';
+    renderFavoriteUI();
+    await loadActiveSubTab();
+  }
 
-    setMatchesHTML(loadingHTML());
-
-    try {
-      const res  = await fetch(
-        `${API_BASE}/searchteams.php?t=${encodeURIComponent(query)}`
-      );
-      const data = await res.json();
-
-      if (!data.teams || data.teams.length === 0) {
-        teamHeaderEl.classList.add('hidden');
-        matchSubTabsEl.classList.add('hidden');
-        setMatchesHTML(emptyHTML('🔍',
-          `No se encontró ningún equipo para <strong>${esc(query)}</strong>`));
-        state.currentTeamId = null;
-        return;
-      }
-
-      const team = data.teams[0];
-      state.currentTeamId   = team.idTeam;
-      state.currentTeamName = team.strTeam;
-
-      // Update team header
-      teamBadgeImg.src = team.strTeamBadge ? `${team.strTeamBadge}/preview` : '';
-      teamBadgeImg.alt = team.strTeam;
-      teamDisplayName.textContent   = team.strTeam;
-      teamDisplayLeague.textContent = team.strLeague ?? '';
-      teamHeaderEl.classList.remove('hidden');
-
-      // Reset to "últimos" sub-tab
-      state.currentMatchType = 'last';
-      subTabBtns.forEach(b => b.classList.toggle('active', b.dataset.type === 'last'));
-      matchSubTabsEl.classList.remove('hidden');
-
-      await loadMatches(state.currentTeamId, 'last');
-    } catch {
-      setMatchesHTML(emptyHTML('❌', 'Error al conectar con la API. Intenta de nuevo.'));
+  function renderFavoriteUI() {
+    if (state.favoriteTeam) {
+      favoriteNameEl.textContent = state.favoriteTeam;
+      favoriteBadgeEl.classList.remove('hidden');
+    } else {
+      favoriteBadgeEl.classList.add('hidden');
     }
   }
 
-  async function loadMatches(teamId, type) {
+  async function loadActiveSubTab() {
+    if (state.currentMatchType === 'groups') {
+      await loadGroups();
+    } else {
+      await loadMatches(state.currentMatchType);
+    }
+  }
+
+  async function loadMatches(type) {
     setMatchesHTML(loadingHTML());
-    const endpoint = type === 'last' ? 'eventslast' : 'eventsnext';
 
     try {
-      const res  = await fetch(`${API_BASE}/${endpoint}.php?id=${teamId}`);
-      const data = await res.json();
-
-      // eventslast -> data.results  |  eventsnext -> data.events
-      const events = data.results ?? data.events ?? [];
+      let events = [];
+      if (type === 'today') {
+        const today = new Date().toISOString().slice(0, 10);
+        const res   = await fetch(
+          `${API_BASE}/eventsday.php?d=${today}&l=${WORLD_CUP_ID}`
+        );
+        const data  = await res.json();
+        events = data.events ?? [];
+      } else {
+        const res  = await fetch(`${API_BASE}/eventsnextleague.php?id=${WORLD_CUP_ID}`);
+        const data = await res.json();
+        events = data.events ?? [];
+      }
 
       if (!events || events.length === 0) {
-        const msg = type === 'last'
-          ? 'No hay partidos recientes disponibles'
+        const msg = type === 'today'
+          ? 'No hay partidos del Mundial hoy'
           : 'No hay próximos partidos programados';
         setMatchesHTML(emptyHTML('📅', msg));
         return;
       }
 
-      const list = events.slice(0, 8);
+      const list = events.slice(0, 12);
       setMatchesHTML(
         `<div class="matches-list">${list.map(ev => matchCardHTML(ev)).join('')}</div>`
       );
     } catch {
       setMatchesHTML(emptyHTML('❌', 'Error al cargar los partidos.'));
     }
+  }
+
+  async function loadGroups() {
+    setMatchesHTML(loadingHTML());
+
+    try {
+      const res  = await fetch(
+        `${API_BASE}/lookuptable.php?l=${WORLD_CUP_ID}&s=${WORLD_CUP_SEASON}`
+      );
+      const data  = await res.json();
+      const table = data.table ?? [];
+
+      if (table.length === 0) {
+        setMatchesHTML(emptyHTML('📊', 'La tabla de grupos no está disponible todavía.'));
+        return;
+      }
+
+      const groups = new Map();
+      for (const row of table) {
+        const groupName = row.strGroup ?? 'Grupo';
+        if (!groups.has(groupName)) groups.set(groupName, []);
+        groups.get(groupName).push(row);
+      }
+
+      const sortedGroupNames = [...groups.keys()].sort();
+      const html = sortedGroupNames.map(name => groupTableHTML(name, groups.get(name))).join('');
+      setMatchesHTML(`<div class="groups-list">${html}</div>`);
+    } catch {
+      setMatchesHTML(emptyHTML('❌', 'Error al cargar la tabla de grupos.'));
+    }
+  }
+
+  function groupTableHTML(groupName, rows) {
+    const sorted = [...rows].sort((a, b) => Number(a.intRank) - Number(b.intRank));
+    const rowsHTML = sorted.map(r => {
+      const isFav = isFavoriteTeam(r.strTeam);
+      return `
+        <div class="group-row${isFav ? ' team-highlight' : ''}">
+          <span class="group-rank">${esc(r.intRank)}</span>
+          <span class="group-team">${isFav ? '★ ' : ''}${esc(r.strTeam)}</span>
+          <span class="group-stat">${esc(r.intPlayed)}</span>
+          <span class="group-stat">${esc(r.intGoalDifference)}</span>
+          <span class="group-points">${esc(r.intPoints)}</span>
+        </div>`;
+    }).join('');
+
+    return `
+      <div class="group-block">
+        <div class="group-title">${esc(groupName)}</div>
+        <div class="group-header">
+          <span class="group-rank">#</span>
+          <span class="group-team">Equipo</span>
+          <span class="group-stat">PJ</span>
+          <span class="group-stat">DG</span>
+          <span class="group-points">Pts</span>
+        </div>
+        ${rowsHTML}
+      </div>`;
+  }
+
+  function isFavoriteTeam(name) {
+    if (!state.favoriteTeam || !name) return false;
+    return name.toLowerCase().includes(state.favoriteTeam.toLowerCase());
   }
 
   function matchCardHTML(ev) {
@@ -194,14 +259,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const awayScore = ev.intAwayScore;
     const date      = fmtDate(ev.dateEvent);
     const time      = (ev.strTime ?? '').slice(0, 5);
-    const league    = ev.strLeague ?? '';
+    const group     = ev.strGroup ? `Grupo ${ev.strGroup}` : (ev.strLeague ?? '');
     const status    = ev.strStatus ?? '';
 
-    const tName  = (state.currentTeamName ?? '').toLowerCase();
-    const isHome = tName ; home.toLowerCase().includes(tName);
-    const isAway = tName && away.toLowerCase().includes(tName);
+    const isHome = isFavoriteTeam(home);
+    const isAway = isFavoriteTeam(away);
 
-    const hasScore = homeScore !== null || homeScore !== undefined || homeScore !== '';
+    const hasScore = homeScore !== null && homeScore !== undefined && homeScore !== '';
     const scoreEl  = hasScore
       ? `<span class="score">${esc(homeScore)} – ${esc(awayScore)}</span>`
       : `<span class="score vs">vs</span>`;
@@ -219,12 +283,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     return `
       <div class="match-card">
         <div class="match-teams">
-          <span class="team-name${isHome ? ' team-highlight' : ''}">${esc(home)}</span>
+          <span class="team-name${isHome ? ' team-highlight' : ''}">${isHome ? '★ ' : ''}${esc(home)}</span>
           ${scoreEl}
-          <span class="team-name away${isAway ? ' team-highlight' : ''}">${esc(away)}</span>
+          <span class="team-name away${isAway ? ' team-highlight' : ''}">${isAway ? '★ ' : ''}${esc(away)}</span>
         </div>
         <div class="match-meta">
-          <span class="match-league" title="${esc(league)}">${esc(league)}</span>
+          <span class="match-league" title="${esc(group)}">${esc(group)}</span>
           <span class="match-date-status">${date}${badgeEl}</span>
         </div>
       </div>`;
