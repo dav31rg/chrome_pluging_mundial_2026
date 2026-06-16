@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Generar Iconos — Dark Mode Extension</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f0f1a;
+      color: #e4e6eb;
+      padding: 32px;
+      margin: 0;
+    }
+    h2 { margin-bottom: 8px; font-size: 20px; }
+    p  { color: #b0b3b8; font-size: 14px; margin-bottom: 6px; line-height: 1.6; }
+    code {
+      background: #242526;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+    .btn {
+      display: inline-block;
+      margin-top: 20px;
+      padding: 10px 24px;
+      background: #4361ee;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn:hover { background: #3a0ca3; }
+    .preview {
+      display: flex;
+      gap: 20px;
+      margin-top: 24px;
+      align-items: flex-end;
+    }
+    .preview-item { text-align: center; }
+    .preview-item canvas {
+      display: block;
+      border: 1px solid #3a3b3c;
+      border-radius: 6px;
+    }
+    .preview-item span {
+      display: block;
+      font-size: 11px;
+      color: #b0b3b8;
+      margin-top: 6px;
+    }
+    .note {
+      margin-top: 20px;
+      background: #1c1e21;
+      border: 1px solid #3a3b3c;
+      border-radius: 8px;
+      padding: 14px 16px;
+      font-size: 13px;
+      color: #b0b3b8;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <h2>🎨 Generador de Iconos</h2>
+  <p>Abre este archivo en Chrome, haz clic en el botón y guarda los archivos descargados en la carpeta <code>icons/</code>.</p>
+
+  <button class="btn" onclick="generateAll()">⬇ Generar y Descargar Iconos</button>
+
+  <div class="preview" id="preview"></div>
+
+  <div class="note">
+    <strong>Instrucciones:</strong><br/>
+    1. Haz clic en "Generar y Descargar Iconos".<br/>
+    2. Se descargarán 4 archivos: <code>icon16.png</code>, <code>icon32.png</code>,
+       <code>icon48.png</code> e <code>icon128.png</code>.<br/>
+    3. Mueve esos archivos a la carpeta <code>icons/</code> de la extensión.<br/>
+    4. Recarga la extensión en <code>chrome://extensions</code>.
+  </div>
+
+  <script>
+    'use strict';
+
+    function drawIcon(size) {
+      const canvas = document.createElement('canvas');
+      canvas.width  = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      const cx  = size / 2;
+      const cy  = size / 2;
+      const r   = size * 0.22;
+
+      // Rounded background
+      const grad = ctx.createLinearGradient(0, 0, size, size);
+      grad.addColorStop(0, '#1a1a2e');
+      grad.addColorStop(1, '#16213e');
+      ctx.fillStyle = grad;
+      roundRect(ctx, 0, 0, size, size, r);
+      ctx.fill();
+
+      // Moon body
+      const moonR   = size * 0.28;
+      const offsetX = size * 0.06;
+      const offsetY = -size * 0.03;
+      ctx.fillStyle = '#dde3ff';
+      ctx.beginPath();
+      ctx.arc(cx + offsetX, cy + offsetY, moonR, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Crescent cutout
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.fillStyle = 'rgba(0,0,0,1)';
+      ctx.beginPath();
+      ctx.arc(
+        cx + offsetX + moonR * 0.52,
+        cy + offsetY - moonR * 0.08,
+        moonR * 0.82,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+      ctx.globalCompositeOperation = 'source-over';
+
+      // Stars (only visible at ≥48 px)
+      if (size >= 48) {
+        const stars = [
+          [cx - moonR * 0.9, cy - moonR * 1.1, size * 0.028],
+          [cx + moonR * 1.3, cy + moonR * 0.5, size * 0.02],
+          [cx - moonR * 0.15, cy + moonR * 1.15, size * 0.022],
+        ];
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+        stars.forEach(([sx, sy, sr]) => {
+          ctx.beginPath();
+          ctx.arc(sx, sy, sr, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      }
+
+      return canvas;
+    }
+
+    function roundRect(ctx, x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      ctx.lineTo(x + r, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.closePath();
+    }
+
+    function generateAll() {
+      const sizes     = [16, 32, 48, 128];
+      const previewEl = document.getElementById('preview');
+      previewEl.innerHTML = '';
+
+      sizes.forEach((size, i) => {
+        const canvas = drawIcon(size);
+
+        // Show preview
+        const item    = document.createElement('div');
+        item.className = 'preview-item';
+        const clone   = document.createElement('canvas');
+        clone.width   = size;
+        clone.height  = size;
+        clone.getContext('2d').drawImage(canvas, 0, 0);
+        const label   = document.createElement('span');
+        label.textContent = `${size}×${size}`;
+        item.appendChild(clone);
+        item.appendChild(label);
+        previewEl.appendChild(item);
+
+        // Stagger downloads slightly to avoid browser blocking
+        setTimeout(() => {
+          canvas.toBlob((blob) => {
+            const url = URL.createObjectURL(blob);
+            const a   = document.createElement('a');
+            a.href     = url;
+            a.download = `icon${size}.png`;
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(url), 2000);
+          }, 'image/png');
+        }, i * 200);
+      });
+    }
+  </script>
+</body>
+</html>

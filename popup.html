@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dark Mode + Fútbol</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <div class="container">
+
+    <!-- ── Tab Navigation ──────────────────────────── -->
+    <nav class="tab-nav">
+      <button class="tab-btn active" data-tab="theme">
+        <span id="header-icon">☀️</span> Tema
+      </button>
+      <button class="tab-btn" data-tab="futbol">
+        ⚽ Fútbol
+      </button>
+    </nav>
+
+    <!-- ══════════════════════════════════════════════ -->
+    <!-- Tab: Tema                                      -->
+    <!-- ══════════════════════════════════════════════ -->
+    <div id="tab-theme" class="tab-content">
+
+      <div class="site-badge">
+        <span class="site-label">Sitio actual:</span>
+        <span id="site-name">cargando...</span>
+      </div>
+
+      <div class="toggle-card" id="toggle-card">
+        <div class="toggle-info">
+          <span class="mode-icon" id="mode-icon">☀️</span>
+          <div class="mode-texts">
+            <span class="mode-text" id="mode-text">Modo Claro</span>
+            <span class="mode-sub" id="mode-sub">Haz clic para activar modo oscuro</span>
+          </div>
+        </div>
+        <label class="switch" aria-label="Activar modo oscuro">
+          <input type="checkbox" id="dark-toggle" />
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div id="unsupported" class="unsupported hidden">
+        <span class="unsupported-icon">⚠️</span>
+        <p>No disponible en esta página.<br/>Solo funciona en sitios http/https.</p>
+      </div>
+
+      <p class="hint">El ajuste se guarda por sitio web</p>
+    </div>
+
+    <!-- ══════════════════════════════════════════════ -->
+    <!-- Tab: Fútbol                                    -->
+    <!-- ══════════════════════════════════════════════ -->
+    <div id="tab-futbol" class="tab-content hidden">
+
+      <!-- Search bar -->
+      <div class="search-box">
+        <input
+          type="text"
+          id="team-search"
+          placeholder="Buscar equipo (ej. Barcelona)…"
+          autocomplete="off"
+        />
+        <button id="search-btn" aria-label="Buscar">🔍</button>
+      </div>
+
+      <!-- Team header (shown after a successful search) -->
+      <div id="team-header" class="team-header hidden">
+        <img id="team-badge-img" src="" alt="" class="team-badge-img" />
+        <div class="team-header-info">
+          <span id="team-display-name" class="team-display-name"></span>
+          <span id="team-display-league" class="team-display-league"></span>
+        </div>
+      </div>
+
+      <!-- Sub-tabs: Últimos / Próximos -->
+      <div id="match-sub-tabs" class="sub-tabs hidden">
+        <button class="sub-tab active" data-type="last">Últimos resultados</button>
+        <button class="sub-tab" data-type="next">Próximos partidos</button>
+      </div>
+
+      <!-- Matches list (scrollable) -->
+      <div id="matches-container">
+        <div class="empty-state">
+          <span>🔎</span>
+          <p>Busca un equipo para ver<br/>sus partidos y resultados</p>
+        </div>
+      </div>
+
+    </div><!-- /tab-futbol -->
+
+  </div><!-- /container -->
+  <script src="popup.js"></script>
+</body>
+</html>
