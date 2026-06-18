@@ -210,9 +210,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     try {
       const res = await fetch(
-        `${API_BASE}/eventspastleague.php?id=${RECENT_RESULTS_LEAGUE_ID}`
+        `${API_BASE}/eventsday.php?d=${today}&l=${RECENT_RESULTS_LEAGUE_ID}`
       );
+
+      // const res   = await fetch(
+      //   `${API_BASE}/eventsday.php?d=${today}&l=${WORLD_CUP_ID}`
+      // );
+
+
       const data = await res.json();
+      console.log(data);
       const events = data.events ?? [];
 
       if (!events || events.length === 0) {
