@@ -5,6 +5,8 @@
 'use strict';
 
 const API_BASE = 'https://www.thesportsdb.com/api/v1/json/3';
+const RECENT_RESULTS_LEAGUE_ID = '4429';
+const RECENT_RESULTS_LEAGUE_NAME = 'Mundial 2026';
 
 /* ── State ──────────────────────────────────────────── */
 const state = {
@@ -13,6 +15,7 @@ const state = {
   currentMatchType: 'last',
   currentChromeTab: null,
   storageKey:       null,
+  statsCache:       new Map(),
 };
 
 /* ── Boot ───────────────────────────────────────────── */
@@ -42,6 +45,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   const teamDisplayLeague = document.getElementById('team-display-league');
   const matchSubTabsEl    = document.getElementById('match-sub-tabs');
   const matchesContainer  = document.getElementById('matches-container');
+  const recentLeagueEl    = document.getElementById('recent-results-league');
+  const recentContainer   = document.getElementById('recent-results-container');
+  const upcomingLeagueEl  = document.getElementById('upcoming-matches-league');
+  const upcomingContainer = document.getElementById('upcoming-matches-container');
   const subTabBtns        = document.querySelectorAll('.sub-tab');
 
   /* ── Tab switching ───────────────────────────────── */
@@ -111,6 +118,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       await loadMatches(state.currentTeamId, state.currentMatchType);
     });
   });
+
+  matchesContainer.addEventListener('click', handleMatchCardClick);
+  recentContainer.addEventListener('click', handleMatchCardClick);
+  upcomingContainer.addEventListener('click', handleMatchCardClick);
+  matchesContainer.addEventListener('keydown', handleMatchCardKeydown);
+  recentContainer.addEventListener('keydown', handleMatchCardKeydown);
+  upcomingContainer.addEventListener('keydown', handleMatchCardKeydown);
+
+  loadRecentResults();
+  loadUpcomingMatches();
 
   /* ─────────────────────────────────────────────────
      Football helpers
@@ -187,6 +204,58 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  async function loadRecentResults() {
+    recentLeagueEl.textContent = RECENT_RESULTS_LEAGUE_NAME;
+    setRecentResultsHTML(loadingHTML('Cargando resultados...'));
+
+    try {
+      const res = await fetch(
+        `${API_BASE}/eventspastleague.php?id=${RECENT_RESULTS_LEAGUE_ID}`
+      );
+      const data = await res.json();
+      const events = data.events ?? [];
+
+      if (!events || events.length === 0) {
+        setRecentResultsHTML(emptyHTML('📅', 'No hay resultados recientes disponibles'));
+        return;
+      }
+
+      setRecentResultsHTML(
+        `<div class="matches-list recent-results-list">${
+          events.slice(0, 8).map(ev => matchCardHTML(ev)).join('')
+        }</div>`
+      );
+    } catch {
+      setRecentResultsHTML(emptyHTML('❌', 'Error al cargar resultados recientes.'));
+    }
+  }
+
+  async function loadUpcomingMatches() {
+    upcomingLeagueEl.textContent = RECENT_RESULTS_LEAGUE_NAME;
+    setUpcomingMatchesHTML(loadingHTML('Cargando partidos...'));
+
+    try {
+      const res = await fetch(
+        `${API_BASE}/eventsnextleague.php?id=${RECENT_RESULTS_LEAGUE_ID}`
+      );
+      const data = await res.json();
+      const events = data.events ?? [];
+
+      if (!events || events.length === 0) {
+        setUpcomingMatchesHTML(emptyHTML('📅', 'No hay próximos partidos disponibles'));
+        return;
+      }
+
+      setUpcomingMatchesHTML(
+        `<div class="matches-list upcoming-matches-list">${
+          events.slice(0, 8).map(ev => matchCardHTML(ev)).join('')
+        }</div>`
+      );
+    } catch {
+      setUpcomingMatchesHTML(emptyHTML('❌', 'Error al cargar próximos partidos.'));
+    }
+  }
+
   function matchCardHTML(ev) {
     const home      = ev.strHomeTeam  ?? '';
     const away      = ev.strAwayTeam  ?? '';
@@ -198,10 +267,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const status    = ev.strStatus ?? '';
 
     const tName  = (state.currentTeamName ?? '').toLowerCase();
-    const isHome = tName ; home.toLowerCase().includes(tName);
+    const isHome = tName && home.toLowerCase().includes(tName);
     const isAway = tName && away.toLowerCase().includes(tName);
 
-    const hasScore = homeScore !== null || homeScore !== undefined || homeScore !== '';
+    const hasScore = homeScore !== null && homeScore !== undefined && homeScore !== ''
+      && awayScore !== null && awayScore !== undefined && awayScore !== '';
     const scoreEl  = hasScore
       ? `<span class="score">${esc(homeScore)} – ${esc(awayScore)}</span>`
       : `<span class="score vs">vs</span>`;
@@ -217,7 +287,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     return `
-      <div class="match-card">
+      <div class="match-card" data-event-id="${esc(ev.idEvent)}" role="button" tabindex="0">
         <div class="match-teams">
           <span class="team-name${isHome ? ' team-highlight' : ''}">${esc(home)}</span>
           ${scoreEl}
@@ -227,7 +297,81 @@ document.addEventListener('DOMContentLoaded', async () => {
           <span class="match-league" title="${esc(league)}">${esc(league)}</span>
           <span class="match-date-status">${date}${badgeEl}</span>
         </div>
+        <div class="match-stats hidden"></div>
       </div>`;
+  }
+
+  async function handleMatchCardClick(event) {
+    const card = event.target.closest('.match-card');
+    if (!card) return;
+
+    const eventId = card.dataset.eventId;
+    const statsEl = card.querySelector('.match-stats');
+    if (!eventId || !statsEl) return;
+
+    const isOpen = !statsEl.classList.contains('hidden');
+    if (isOpen) {
+      statsEl.classList.add('hidden');
+      return;
+    }
+
+    statsEl.classList.remove('hidden');
+
+    if (state.statsCache.has(eventId)) {
+      statsEl.innerHTML = state.statsCache.get(eventId);
+      return;
+    }
+
+    statsEl.innerHTML = statsLoadingHTML();
+
+    try {
+      const res = await fetch(`${API_BASE}/lookupeventstats.php?id=${eventId}`);
+      const data = await res.json();
+      const html = eventStatsHTML(data.eventstats ?? []);
+      state.statsCache.set(eventId, html);
+      statsEl.innerHTML = html;
+    } catch {
+      statsEl.innerHTML = statsEmptyHTML('Error al cargar estadísticas.');
+    }
+  }
+
+  function handleMatchCardKeydown(event) {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    if (!event.target.closest('.match-card')) return;
+
+    event.preventDefault();
+    handleMatchCardClick(event);
+  }
+
+  function eventStatsHTML(stats) {
+    if (!stats || stats.length === 0) {
+      return statsEmptyHTML('No hay estadísticas disponibles.');
+    }
+
+    return `
+      <div class="stats-list">
+        ${stats.slice(0, 8).map(stat => `
+          <div class="stat-row">
+            <span>${esc(stat.intHome)}</span>
+            <span>${esc(formatStatName(stat.strStat))}</span>
+            <span>${esc(stat.intAway)}</span>
+          </div>
+        `).join('')}
+      </div>`;
+  }
+
+  function statsLoadingHTML() {
+    return `<div class="stats-state"><div class="mini-spinner"></div><span>Cargando estadísticas...</span></div>`;
+  }
+
+  function statsEmptyHTML(message) {
+    return `<div class="stats-state"><span>${esc(message)}</span></div>`;
+  }
+
+  function formatStatName(name) {
+    return String(name ?? '')
+      .replace(/insidebox/i, 'inside box')
+      .replace(/outsidebox/i, 'outside box');
   }
 
   /* ─────────────────────────────────────────────────
@@ -262,9 +406,11 @@ document.addEventListener('DOMContentLoaded', async () => {
      ───────────────────────────────────────────────── */
 
   function setMatchesHTML(html) { matchesContainer.innerHTML = html; }
+  function setRecentResultsHTML(html) { recentContainer.innerHTML = html; }
+  function setUpcomingMatchesHTML(html) { upcomingContainer.innerHTML = html; }
 
-  function loadingHTML() {
-    return `<div class="loading-state"><div class="spinner"></div><span>Cargando…</span></div>`;
+  function loadingHTML(text = 'Cargando...') {
+    return `<div class="loading-state"><div class="spinner"></div><span>${esc(text)}</span></div>`;
   }
 
   function emptyHTML(icon, msg) {
