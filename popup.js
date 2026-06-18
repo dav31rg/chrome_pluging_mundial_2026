@@ -209,6 +209,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     setRecentResultsHTML(loadingHTML('Cargando resultados...'));
 
     try {
+      const today = new Date().toLocaleDateString('en-CA');
+      console.log(today);
       const res = await fetch(
         `${API_BASE}/eventsday.php?d=${today}&l=${RECENT_RESULTS_LEAGUE_ID}`
       );
