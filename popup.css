@@ -373,6 +373,71 @@ body {
   border-radius: 4px;
 }
 
+/* ── Recent results block ─────────────────────────── */
+.recent-results-block {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.upcoming-matches-block {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.section-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.section-heading h2 {
+  font-size: 13px;
+  line-height: 1.2;
+  color: var(--text-primary);
+}
+
+.section-heading span {
+  font-size: 10.5px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#recent-results-container {
+  max-height: 230px;
+  overflow-y: auto;
+  padding-right: 2px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+#recent-results-container::-webkit-scrollbar       { width: 4px; }
+#recent-results-container::-webkit-scrollbar-track { background: transparent; }
+#recent-results-container::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+#upcoming-matches-container {
+  max-height: 230px;
+  overflow-y: auto;
+  padding-right: 2px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+#upcoming-matches-container::-webkit-scrollbar       { width: 4px; }
+#upcoming-matches-container::-webkit-scrollbar-track { background: transparent; }
+#upcoming-matches-container::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
 /* ── Match list & cards ────────────────────────────── */
 .matches-list {
   display: flex;
@@ -385,11 +450,17 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: 10px 12px;
+  cursor: pointer;
   transition: background 0.3s, border 0.3s;
 }
 
 .match-card:hover {
   border-color: var(--accent);
+}
+
+.match-card:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 /* Teams row */
@@ -463,6 +534,62 @@ body {
   flex-shrink: 0;
   font-size: 10px;
   color: var(--text-secondary);
+}
+
+/* ── Match stats ──────────────────────────────────── */
+.match-stats {
+  margin-top: 9px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.stats-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.stat-row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 34px;
+  align-items: center;
+  min-height: 24px;
+  column-gap: 8px;
+  font-size: 10.5px;
+  color: var(--text-secondary);
+}
+
+.stat-row span:first-child,
+.stat-row span:last-child {
+  color: var(--text-primary);
+  font-weight: 700;
+  text-align: center;
+}
+
+.stat-row span:nth-child(2) {
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stats-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 28px;
+  color: var(--text-secondary);
+  font-size: 10.5px;
+}
+
+.mini-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
 }
 
 /* ── Status badges ─────────────────────────────────── */
@@ -541,4 +668,3 @@ body {
 
 .empty-state > span { font-size: 28px; }
 .empty-state p      { line-height: 1.55; }
-
